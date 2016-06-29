@@ -10,6 +10,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 from time import sleep
+import pytesseract as tess
 import matplotlib.pyplot as plt
 
 
@@ -28,9 +29,13 @@ class ControlWindow(QMainWindow, Form):
         self.fig = Figure(frameon=False)
         self.ax = self.fig.add_subplot(111, frameon=False)
         x = np.linspace(0, 2 * np.pi, 1000)
+        self.ax.set_ylim([0, 480])
+        self.ax.set_xlim([0, 640])
         self.line1, = self.ax.plot(x, np.cos(x), 'r', markersize=20)
         self.canvas = FigureCanvas(self.fig)
         self.navi = NavigationToolbar(self.canvas, self)
+        self.x_position = []
+        self.y_position = []
 
         self.start_capture()
 
@@ -40,16 +45,17 @@ class ControlWindow(QMainWindow, Form):
 
     def start_capture(self):
         if not self.capture:
-            self.capture = QtCapture(0, self.vid_label)
+            self.capture = QtCapture(0, self.vid_label, self.x_position, self.y_position)
         self.capture.start()
         if self.thread.isRunning():
             return
-        self.thread = PlotThread(0, 0)
+
+        self.thread = PlotThread(self.x_position, self.y_position)
         self.thread.update_trigger.connect(self.update_plot)
         self.thread.start()
 
     def update_plot(self, x, y):
-        self.line1.set_data(x, y)
+        self.line1.set_data(np.array(x), np.array(y))
         self.fig.canvas.draw()
 
 
@@ -58,14 +64,12 @@ class QtCapture(QMainWindow, Form):
         QMainWindow.__init__(self)
         self.fps = 24
         self.cap = cv2.VideoCapture(args[0])
-    
+        self.xPos = args[2]
+        self.yPos = args[3]
         self.video_frame = args[1]
         lay = QVBoxLayout()
         lay.addWidget(self.video_frame)
         self.timer = QtCore.QTimer()
-
-        self.xPos = []
-        self.yPos = []
 
     def next_frame_slot(self):
         ret, frame = self.cap.read()
@@ -79,10 +83,10 @@ class QtCapture(QMainWindow, Form):
                 flags=cv2.CASCADE_SCALE_IMAGE
             )
             for (x, y, w, h) in fists:
-                frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                self.xPos.append(np.size(frame, 1) - x)
-                self.yPos.append(np.size(frame, 0) - y)
-                print(self.xPos, self.yPos)
+                if len(fists) == 1:
+                    frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                    self.xPos.append(np.size(frame, 1) - x)
+                    self.yPos.append(np.size(frame, 0) - y)
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.flip(frame, 1)
@@ -104,7 +108,7 @@ class QtCapture(QMainWindow, Form):
 
 
 class PlotThread(QtCore.QThread):
-    update_trigger = QtCore.pyqtSignal(int, int)
+    update_trigger = QtCore.pyqtSignal(list, list)
 
     def __init__(self, new_x, new_y):
         QtCore.QThread.__init__(self)
@@ -112,8 +116,9 @@ class PlotThread(QtCore.QThread):
         self.new_y = new_y
 
     def run(self):
-        self.update_trigger.emit(self.new_x, self.new_y)
-        sleep(0.1)
+        while True:
+            self.update_trigger.emit(self.new_x, self.new_y)
+            sleep(0.1)
 
 
 app = QApplication(sys.argv)
