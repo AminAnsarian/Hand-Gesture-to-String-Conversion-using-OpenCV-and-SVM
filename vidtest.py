@@ -1,3 +1,4 @@
+import TrainAndTest
 import test
 import cv2
 import os
@@ -18,6 +19,15 @@ cascade_Path = os.path.join(os.getcwd(), 'fist.xml')
 fistCascade = cv2.CascadeClassifier(cascade_Path)
 
 
+def run_once(f):
+    def wrapper(*args, **kwargs):
+        if not wrapper.has_run:
+            wrapper.has_run = True
+            return f(*args, **kwargs)
+    wrapper.has_run = False
+    return wrapper
+
+
 class ControlWindow(QMainWindow, Form):
 
     def __init__(self):
@@ -31,13 +41,16 @@ class ControlWindow(QMainWindow, Form):
         x = np.linspace(0, 2 * np.pi, 1000)
         self.ax.set_ylim([0, 480])
         self.ax.set_xlim([0, 640])
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
         self.line1, = self.ax.plot(x, np.cos(x), 'r.', markersize=20)
         self.canvas = FigureCanvas(self.fig)
         self.navi = NavigationToolbar(self.canvas, self)
         self.x_position = []
         self.y_position = []
-
         self.start_capture()
+        self.processAction = run_once(TrainAndTest.main)
+        self.saveAction = run_once(self.save_fig)
 
         l = QVBoxLayout(self.matplotlib_widget)
         l.addWidget(self.canvas)
@@ -58,15 +71,24 @@ class ControlWindow(QMainWindow, Form):
             self.ax.cla()
             self.ax.set_ylim([0, 480])
             self.ax.set_xlim([0, 640])
+            self.ax.set_xticks([])
+            self.ax.set_yticks([])
             z = np.linspace(0, 2 * np.pi, 1000)
             self.line1, = self.ax.plot(z, np.cos(z), 'r.', markersize=20)
         elif string:
-            print(string)
-            self.string_label.setText(string)
+            self.saveAction()
+            outString = self.processAction('output.png')
+            if outString:
+                self.string_label.setText(outString)
+                print(outString)
         else:
             self.line1.set_data(np.array(x), np.array(y))
             self.fig.canvas.draw()
+            self.processAction.has_run = False
+            self.saveAction.has_run = False
 
+    def save_fig(self):
+        self.fig.savefig('output.png')
 
 class QtCapture(QMainWindow, Form):
 
@@ -123,7 +145,7 @@ class QtCapture(QMainWindow, Form):
 
 
 class PlotThread(QtCore.QThread):
-    update_trigger = QtCore.pyqtSignal(list, list, int, str)
+    update_trigger = QtCore.pyqtSignal(list, list, int, int)
 
     def __init__(self, new_x, new_y):
         QtCore.QThread.__init__(self)
@@ -136,13 +158,13 @@ class PlotThread(QtCore.QThread):
                 if self.new_x[-1] > 490 and self.new_y[-1] < 240:
                     self.new_x.clear()
                     self.new_y.clear()
-                    self.emit(1, '')
+                    self.emit(1, 0)
                 elif self.new_x[-1] > 490 and self.new_y[-1] > 240:
-                    self.emit(0, test.test())
+                    self.emit(0, 1)
                 else:
-                    self.emit(0, '')
+                    self.emit(0, 0)
             else:
-                self.emit(0, '')
+                self.emit(0, 0)
             sleep(0.1)
 
     def emit(self, clear, string):
