@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1270</width>
-    <height>630</height>
+    <height>659</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,8 +17,8 @@
    <widget class="QLabel" name="vid_label">
     <property name="geometry">
      <rect>
-      <x>680</x>
-      <y>20</y>
+      <x>650</x>
+      <y>30</y>
       <width>550</width>
       <height>501</height>
      </rect>
@@ -31,9 +31,9 @@
     <property name="geometry">
      <rect>
       <x>50</x>
-      <y>70</y>
-      <width>531</width>
-      <height>371</height>
+      <y>10</y>
+      <width>550</width>
+      <height>501</height>
      </rect>
     </property>
     <property name="text">
@@ -56,14 +56,40 @@
    <widget class="QLabel" name="string_label">
     <property name="geometry">
      <rect>
-      <x>230</x>
-      <y>480</y>
-      <width>161</width>
+      <x>240</x>
+      <y>520</y>
+      <width>261</width>
       <height>61</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <pointsize>16</pointsize>
+     </font>
+    </property>
     <property name="text">
      <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>34</x>
+      <y>535</y>
+      <width>191</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>XW Zar</family>
+      <pointsize>16</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Detected Text:</string>
     </property>
    </widget>
   </widget>
@@ -73,7 +99,7 @@
      <x>0</x>
      <y>0</y>
      <width>1270</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>

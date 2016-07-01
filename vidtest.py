@@ -1,5 +1,4 @@
 import TrainAndTest
-import test
 import cv2
 import os
 import numpy as np
@@ -19,6 +18,7 @@ cascade_Path = os.path.join(os.getcwd(), 'fist.xml')
 fistCascade = cv2.CascadeClassifier(cascade_Path)
 
 
+#this function is used because save_fig and process should not be called more than once
 def run_once(f):
     def wrapper(*args, **kwargs):
         if not wrapper.has_run:
@@ -35,7 +35,7 @@ class ControlWindow(QMainWindow, Form):
         Form.__init__(self)
         self.setupUi(self)
         self.capture = None
-        self.thread = PlotThread(0,0)
+        self.thread = PlotThread(0, 0)
         self.fig = Figure(frameon=False)
         self.ax = self.fig.add_subplot(111, frameon=False)
         x = np.linspace(0, 2 * np.pi, 1000)
@@ -68,27 +68,28 @@ class ControlWindow(QMainWindow, Form):
 
     def update_plot(self, x, y, clear, string):
         if clear:
-            self.ax.cla()
+            self.ax.cla() #clear ax
             self.ax.set_ylim([0, 480])
             self.ax.set_xlim([0, 640])
             self.ax.set_xticks([])
             self.ax.set_yticks([])
             z = np.linspace(0, 2 * np.pi, 1000)
             self.line1, = self.ax.plot(z, np.cos(z), 'r.', markersize=20)
-        elif string:
+            self.fig.canvas.draw()
+        elif string: #processing the detection
             self.saveAction()
             outString = self.processAction('output.png')
             if outString:
                 self.string_label.setText(outString)
-                print(outString)
-        else:
-            self.line1.set_data(np.array(x), np.array(y))
+        else: #regular realtime ploting
+            self.line1.set_data(np.array(x)*1.1, np.array(y)*1.1)
             self.fig.canvas.draw()
             self.processAction.has_run = False
             self.saveAction.has_run = False
 
     def save_fig(self):
         self.fig.savefig('output.png')
+
 
 class QtCapture(QMainWindow, Form):
 
@@ -103,7 +104,7 @@ class QtCapture(QMainWindow, Form):
         lay.addWidget(self.video_frame)
         self.timer = QtCore.QTimer()
 
-    def next_frame_slot(self):
+    def next_frame_slot(self): #image processing section
         ret, frame = self.cap.read()
         if ret:
             cv2.rectangle(frame, (0, 0), (150, 240), (0, 255, 0), 2)
@@ -127,6 +128,11 @@ class QtCapture(QMainWindow, Form):
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.flip(frame, 1)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(frame, 'Process', (500, 20), font, 0.8, (0, 0, 0))
+        cv2.putText(frame, 'Rectangle', (500, 40), font, 0.8, (0, 0, 0))
+        cv2.putText(frame, 'Clear', (500, 260), font, 0.8, (0, 0, 0))
+        cv2.putText(frame, 'Rectangle', (500, 280), font, 0.8, (0, 0, 0))
         img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], QtGui.QImage.Format_RGB888)
         pix = QtGui.QPixmap.fromImage(img)
         self.video_frame.setPixmap(pix)
@@ -139,13 +145,9 @@ class QtCapture(QMainWindow, Form):
     def stop(self):
         self.timer.stop()
 
-    def deleteLater(self):
-        self.cap.release()
-        super(QMainWindow, self).deleteLater()
-
 
 class PlotThread(QtCore.QThread):
-    update_trigger = QtCore.pyqtSignal(list, list, int, int)
+    update_trigger = QtCore.pyqtSignal(list, list, bool, bool) #fist position and clear and string
 
     def __init__(self, new_x, new_y):
         QtCore.QThread.__init__(self)
@@ -155,11 +157,11 @@ class PlotThread(QtCore.QThread):
     def run(self):
         while True:
             if self.new_x and self.new_y:
-                if self.new_x[-1] > 490 and self.new_y[-1] < 240:
+                if self.new_x[-1] > 490 and self.new_y[-1] < 240: #inside blue rectangle
                     self.new_x.clear()
                     self.new_y.clear()
                     self.emit(1, 0)
-                elif self.new_x[-1] > 490 and self.new_y[-1] > 240:
+                elif self.new_x[-1] > 490 and self.new_y[-1] > 240: #inside green rectangle
                     self.emit(0, 1)
                 else:
                     self.emit(0, 0)
