@@ -1,7 +1,9 @@
+import test
 import cv2
 import os
 import numpy as np
 import sys
+from time import sleep
 from PyQt5 import uic, QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout
 import matplotlib
@@ -9,9 +11,6 @@ matplotlib.use("Qt5Agg")
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
-from time import sleep
-import pytesseract as tess
-import matplotlib.pyplot as plt
 
 
 Form = uic.loadUiType(os.path.join(os.getcwd(), "mainwindow.ui"))[0]
@@ -20,6 +19,7 @@ fistCascade = cv2.CascadeClassifier(cascade_Path)
 
 
 class ControlWindow(QMainWindow, Form):
+
     def __init__(self):
         QMainWindow.__init__(self)
         Form.__init__(self)
@@ -31,7 +31,7 @@ class ControlWindow(QMainWindow, Form):
         x = np.linspace(0, 2 * np.pi, 1000)
         self.ax.set_ylim([0, 480])
         self.ax.set_xlim([0, 640])
-        self.line1, = self.ax.plot(x, np.cos(x), 'r', markersize=20)
+        self.line1, = self.ax.plot(x, np.cos(x), 'r.', markersize=20)
         self.canvas = FigureCanvas(self.fig)
         self.navi = NavigationToolbar(self.canvas, self)
         self.x_position = []
@@ -49,17 +49,27 @@ class ControlWindow(QMainWindow, Form):
         self.capture.start()
         if self.thread.isRunning():
             return
-
         self.thread = PlotThread(self.x_position, self.y_position)
         self.thread.update_trigger.connect(self.update_plot)
         self.thread.start()
 
-    def update_plot(self, x, y):
-        self.line1.set_data(np.array(x), np.array(y))
-        self.fig.canvas.draw()
+    def update_plot(self, x, y, clear, string):
+        if clear:
+            self.ax.cla()
+            self.ax.set_ylim([0, 480])
+            self.ax.set_xlim([0, 640])
+            z = np.linspace(0, 2 * np.pi, 1000)
+            self.line1, = self.ax.plot(z, np.cos(z), 'r.', markersize=20)
+        elif string:
+            print(string)
+            self.string_label.setText(string)
+        else:
+            self.line1.set_data(np.array(x), np.array(y))
+            self.fig.canvas.draw()
 
 
 class QtCapture(QMainWindow, Form):
+
     def __init__(self, *args):
         QMainWindow.__init__(self)
         self.fps = 24
@@ -74,6 +84,8 @@ class QtCapture(QMainWindow, Form):
     def next_frame_slot(self):
         ret, frame = self.cap.read()
         if ret:
+            cv2.rectangle(frame, (0, 0), (150, 240), (0, 255, 0), 2)
+            cv2.rectangle(frame, (0, 480), (150, 240), (255, 0, 0), 2)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             fists = fistCascade.detectMultiScale(
                 gray,
@@ -85,6 +97,9 @@ class QtCapture(QMainWindow, Form):
             for (x, y, w, h) in fists:
                 if len(fists) == 1:
                     frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                    x += int(w/2)
+                    y += int(h/2)
+                    frame = cv2.circle(frame, (x, y), 5, (0, 0, 255), 2)
                     self.xPos.append(np.size(frame, 1) - x)
                     self.yPos.append(np.size(frame, 0) - y)
 
@@ -108,7 +123,7 @@ class QtCapture(QMainWindow, Form):
 
 
 class PlotThread(QtCore.QThread):
-    update_trigger = QtCore.pyqtSignal(list, list)
+    update_trigger = QtCore.pyqtSignal(list, list, int, str)
 
     def __init__(self, new_x, new_y):
         QtCore.QThread.__init__(self)
@@ -117,9 +132,21 @@ class PlotThread(QtCore.QThread):
 
     def run(self):
         while True:
-            self.update_trigger.emit(self.new_x, self.new_y)
+            if self.new_x and self.new_y:
+                if self.new_x[-1] > 490 and self.new_y[-1] < 240:
+                    self.new_x.clear()
+                    self.new_y.clear()
+                    self.emit(1, '')
+                elif self.new_x[-1] > 490 and self.new_y[-1] > 240:
+                    self.emit(0, test.test())
+                else:
+                    self.emit(0, '')
+            else:
+                self.emit(0, '')
             sleep(0.1)
 
+    def emit(self, clear, string):
+        self.update_trigger.emit(self.new_x, self.new_y, clear, string)
 
 app = QApplication(sys.argv)
 app.setStyle("Plastic")
