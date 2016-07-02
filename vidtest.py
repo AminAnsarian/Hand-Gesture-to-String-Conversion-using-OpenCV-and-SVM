@@ -18,6 +18,7 @@ cascade_Path = os.path.join(os.getcwd(), 'fist.xml')
 fistCascade = cv2.CascadeClassifier(cascade_Path)
 
 
+
 #this function is used because save_fig and process should not be called more than once
 def run_once(f):
     def wrapper(*args, **kwargs):
@@ -69,6 +70,7 @@ class ControlWindow(QMainWindow, Form):
     def update_plot(self, x, y, clear, string):
         if clear:
             self.ax.cla() #clear ax
+            self.string_label.setText('')
             self.ax.set_ylim([0, 480])
             self.ax.set_xlim([0, 640])
             self.ax.set_xticks([])
@@ -78,9 +80,18 @@ class ControlWindow(QMainWindow, Form):
             self.fig.canvas.draw()
         elif string: #processing the detection
             self.saveAction()
-            outString = self.processAction('output.png')
-            if outString:
-                self.string_label.setText(outString)
+            if(len(x) > 20):
+                outString = self.processAction('output.png')
+
+                if outString:
+                    self.string_label.setText(outString)
+            else:
+                x.clear()
+                y.clear()
+                return
+
+
+
         else: #regular realtime ploting
             self.line1.set_data(np.array(x)*1.1, np.array(y)*1.1)
             self.fig.canvas.draw()
@@ -89,6 +100,9 @@ class ControlWindow(QMainWindow, Form):
 
     def save_fig(self):
         self.fig.savefig('output.png')
+
+
+
 
 
 class QtCapture(QMainWindow, Form):
@@ -163,6 +177,8 @@ class PlotThread(QtCore.QThread):
                     self.emit(1, 0)
                 elif self.new_x[-1] > 490 and self.new_y[-1] > 240: #inside green rectangle
                     self.emit(0, 1)
+                    #self.new_x.clear()
+                    #self.new_y.clear()
                 else:
                     self.emit(0, 0)
             else:

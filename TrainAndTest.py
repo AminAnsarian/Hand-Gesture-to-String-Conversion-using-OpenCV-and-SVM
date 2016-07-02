@@ -109,25 +109,27 @@ def main(filename):
 
         npaROIResized = np.float32(npaROIResized)   #float 1d matrix
 
-        retval, npaResults, neigh_resp, dists = kNearest.findNearest(npaROIResized, k = 1)  #Initiate Detection using KNN
-        strCurrentChar = str(chr(int(npaResults[0][0])))
 
-        if(second - first) > 30:
-            strFinalString = strFinalString  + " "+ strCurrentChar
-        else:
-            strFinalString = strFinalString + strCurrentChar
-        first = contourWithData.intRectX + contourWithData.intRectWidth
+        if(contourWithData.intRectWidth*contourWithData.intRectHeight) > 900:
+            retval, npaResults, neigh_resp, dists = kNearest.findNearest(npaROIResized, k = 1)  #Initiate Detection using KNN
+            strCurrentChar = str(chr(int(npaResults[0][0])))
+
+            if(second - first) > 30:
+                strFinalString = strFinalString  + " "+ strCurrentChar
+            else:
+                strFinalString = strFinalString + strCurrentChar
+            first = contourWithData.intRectX + contourWithData.intRectWidth
 
     print("\n" + strFinalString + "\n")
     # cv2.imshow("imgTestingNumbers", imgTestingNumbers)
-    cv2.waitKey(0)
+    # cv2.waitKey(0)
 
-    cv2.destroyAllWindows()
+    # cv2.destroyAllWindows()
 
     return strFinalString
 
 if __name__ == "__main__":
-    main("TEST.PNG")
+    main("output.PNG")
 
 
 
